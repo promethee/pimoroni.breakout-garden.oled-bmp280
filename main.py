@@ -20,6 +20,15 @@ try:
 except ImportError:
     from smbus import SMBus
 
+emoji = "¯\_(ツ)_/¯"
+platform = "@github"
+author = "promethee"
+
+FontTemp = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 48)
+FontDate = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 22)
+FontTime = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 28)
+FontEmoji = ImageFont.truetype('./CODE2000.ttf', 22)
+
 def main():
     bus = SMBus(1)
     bmp280 = BMP280(i2c_dev=bus)
@@ -29,9 +38,12 @@ def main():
     config = cmdline.load_config('./sh1107.pimoroni.conf')
     args = parser.parse_args(config + actual_args)
     device = cmdline.create_device(args)
-    FontTemp = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 48)
-    FontDate = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 22)
-    FontTime = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 28)
+
+    with canvas(device) as draw:
+        draw.text((16, 8), emoji, fill="white", font=FontDate)
+        draw.text((16, 54), platform, fill="white", font=FontDate)
+        draw.text((8, 96), author, fill="white", font=FontDate)
+    time.sleep(3)
 
     offset = 12
 
