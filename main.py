@@ -27,32 +27,31 @@ author = "promethee"
 FontTemp = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 48)
 FontDate = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 22)
 FontTime = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 28)
-FontEmoji = ImageFont.truetype('./CODE2000.ttf', 22)
+FontEmoji = ImageFont.truetype('./CODE2000.TTF', 22)
 
 def main():
     bus = SMBus(1)
     bmp280 = BMP280(i2c_dev=bus)
 
-    actual_args = sys.argv[1:]
     parser = cmdline.create_parser(description='luma.examples arguments')
-    config = cmdline.load_config('./sh1107.pimoroni.conf')
-    args = parser.parse_args(config + actual_args)
+    config = cmdline.load_config('./ssh1107.pimoroni.conf')
+    args = parser.parse_args(config + [])
     device = cmdline.create_device(args)
 
     with canvas(device) as draw:
-        draw.text((16, 8), emoji, fill="white", font=FontDate)
+        draw.text((16, 12), emoji, fill="white", font=FontEmoji)
         draw.text((16, 54), platform, fill="white", font=FontDate)
         draw.text((8, 96), author, fill="white", font=FontDate)
     time.sleep(3)
 
-    offset = 12
+    offset = sys.argv[1]
 
     while True:
         with canvas(device) as draw:
             now = datetime.datetime.now()
             today_date = now.strftime("%Y/%m/%d")
             today_time = now.strftime("%H:%M:%S")
-            temperature = '{:d}°C'.format(int(bmp280.get_temperature() - offset))
+            temperature = '{:d}°C'.format(int(bmp280.get_temperature() - float(offset)))
 
             draw.text((0, 0), temperature, fill="white", font=FontTemp)
             draw.text((0, 60), today_date, fill="white", font=FontDate)
