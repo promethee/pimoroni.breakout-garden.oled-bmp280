@@ -4,6 +4,4 @@ RUN dpkg-reconfigure fontconfig-config
 COPY ./requirements.txt ./
 RUN pip3 install -r requirements.txt
 WORKDIR /usr/src/app
-RUN git clone https://github.com/rm-hull/luma.examples.git
-WORKDIR /usr/src/app/luma.examples/examples
-CMD python3 welcome.py --display sh1106 --height 128 --rotate 2 --interface i2c
+CMD python3 main.py
