@@ -7,8 +7,8 @@ and
 Richard Hull (and contributors)
 https://github.com/rm-hull/luma.examples/blob/master/examples/clock.py
 """
-import time
 import datetime
+import time
 import sys
 from luma.core import cmdline
 from luma.core.render import canvas
@@ -24,39 +24,71 @@ emoji = "¯\_(ツ)_/¯"
 platform = "@github"
 author = "promethee"
 
-FontTemp = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 48)
+FontTemp = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 92)
+FontTemp2 = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 32)
 FontDate = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 22)
-FontTime = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 28)
+FontDebug = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 20)
 FontEmoji = ImageFont.truetype('./CODE2000.TTF', 22)
 
+offset = sys.argv[1] if len(sys.argv) > 1 else 0
+global bmp280_ok, device_ok
+
+def init_bmp280():
+    global bmp280_ok
+    try:
+        bus = SMBus(1)
+        bmp280 = BMP280(i2c_dev=bus)
+        bmp280_ok = True
+        return bmp280
+    except:
+        bmp280_ok = False
+        return None
+
+def init_oled():
+    global device_ok
+    try:
+        parser = cmdline.create_parser(description='luma.examples arguments')
+        config = cmdline.load_config('./ssh1107.pimoroni.conf')
+        args = parser.parse_args(config + [])
+        device = cmdline.create_device(args)
+        device_ok = True
+        return device
+    except:
+        device_ok = False
+
 def main():
-    bus = SMBus(1)
-    bmp280 = BMP280(i2c_dev=bus)
+    bmp280_ok = False
+    device = init_oled()
 
-    parser = cmdline.create_parser(description='luma.examples arguments')
-    config = cmdline.load_config('./ssh1107.pimoroni.conf')
-    args = parser.parse_args(config + [])
-    device = cmdline.create_device(args)
-
-    with canvas(device) as draw:
-        draw.text((16, 12), emoji, fill="white", font=FontEmoji)
-        draw.text((16, 54), platform, fill="white", font=FontDate)
-        draw.text((8, 96), author, fill="white", font=FontDate)
-    time.sleep(3)
-
-    offset = sys.argv[1]
+    if device:
+        with canvas(device) as draw:
+            draw.text((16, 12), emoji, fill="white", font=FontEmoji)
+            draw.text((16, 54), platform, fill="white", font=FontDate)
+            draw.text((8, 96), author, fill="white", font=FontDate)
+        time.sleep(3)
 
     while True:
-        with canvas(device) as draw:
-            now = datetime.datetime.now()
-            today_date = now.strftime("%Y/%m/%d")
-            today_time = now.strftime("%H:%M:%S")
-            temperature = '{:d}°C'.format(int(bmp280.get_temperature() - float(offset)))
+        if bmp280_ok == False:
+            bmp280 = init_bmp280()
+        if device_ok == False:
+            device = init_oled()
 
-            draw.text((0, 0), temperature, fill="white", font=FontTemp)
-            draw.text((0, 60), today_date, fill="white", font=FontDate)
-            draw.text((0, 92), today_time, fill="white", font=FontTime)
-
+        time.sleep(1)
+        now = datetime.datetime.now()
+        datetimestamp = now.strftime("%Y/%m/%d @ %H:%M:%S")
+        try:
+            if device_ok:
+                with canvas(device) as draw:
+                    temperature = '{:d}'.format(int(bmp280.get_temperature() - float(offset)))
+                    print(datetimestamp, temperature, '°C')
+                    draw.text((0, 0), temperature, fill="white", font=FontTemp)
+                    draw.text((48, 92), '°C', fill="white", font=FontTemp2)
+        except:
+            print(datetimestamp, 'bmp280 has been removed or is missing')
+            with canvas(device) as draw:
+                error_message = 'bmp280 \nhas been \nremoved \nor is missing'
+                draw.text((0, 0), error_message, fill="white", font=FontDebug)
+            bmp280 = init_bmp280()
 
 if __name__ == "__main__":
     try:
