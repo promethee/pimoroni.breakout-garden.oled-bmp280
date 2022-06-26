@@ -31,67 +31,54 @@ FontDebug = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
 FontEmoji = ImageFont.truetype('./CODE2000.TTF', 22)
 
 offset = sys.argv[1] if len(sys.argv) > 1 else 0
-global bmp280_ok, device_ok
+
+last_temperature = 0
 
 def init_bmp280():
-    global bmp280_ok
-    try:
-        bus = SMBus(1)
-        bmp280 = BMP280(i2c_dev=bus)
-        bmp280_ok = True
-        return bmp280
-    except:
-        bmp280_ok = False
-        return None
+    bus = SMBus(1)
+    bmp280 = BMP280(i2c_dev=bus)
+    return bmp280
 
 def init_oled():
-    global device_ok
+    parser = cmdline.create_parser(description='luma.examples arguments')
+    config = cmdline.load_config('./ssh1107.pimoroni.conf')
+    args = parser.parse_args(config + [])
+    device = cmdline.create_device(args)
+    return device
+
+def main(bmp280, device):
+    global last_temperature
+    while True:
+        time.sleep(1)
+        now = datetime.datetime.now()
+        datetimestamp = now.strftime("%Y/%m/%d @ %H:%M:%S")
+        temperature = '{:d}'.format(int(bmp280.get_temperature() - float(offset)))
+
+        try:
+            if temperature != last_temperature:
+                last_temperature = temperature
+
+            with canvas(device) as draw:
+                print(datetimestamp, temperature, '°C')
+                draw.text((0, 0), temperature, fill="white", font=FontTemp)
+                draw.text((48, 92), '°C', fill="white", font=FontTemp2)
+        except Error as e:
+            print(datetimestamp, 'bmp280 has been removed or is missing', e)
+            bmp280 = init_bmp280()
+            device = init_oled()
+            with canvas(device) as draw:
+                error_message = 'bmp280 \nhas been \nremoved \nor is missing'
+                draw.text((0, 0), error_message, fill="white", font=FontDebug)
+
+if __name__ == "__main__":
     try:
-        parser = cmdline.create_parser(description='luma.examples arguments')
-        config = cmdline.load_config('./ssh1107.pimoroni.conf')
-        args = parser.parse_args(config + [])
-        device = cmdline.create_device(args)
-        device_ok = True
-        return device
-    except:
-        device_ok = False
-
-def main():
-    bmp280_ok = False
-    device = init_oled()
-
-    if device:
+        bmp280 = init_bmp280()
+        device = init_oled()
         with canvas(device) as draw:
             draw.text((16, 12), emoji, fill="white", font=FontEmoji)
             draw.text((16, 54), platform, fill="white", font=FontDate)
             draw.text((8, 96), author, fill="white", font=FontDate)
         time.sleep(3)
-
-    while True:
-        if bmp280_ok == False:
-            bmp280 = init_bmp280()
-        if device_ok == False:
-            device = init_oled()
-
-        time.sleep(1)
-        now = datetime.datetime.now()
-        datetimestamp = now.strftime("%Y/%m/%d @ %H:%M:%S")
-        try:
-            if device_ok:
-                with canvas(device) as draw:
-                    temperature = '{:d}'.format(int(bmp280.get_temperature() - float(offset)))
-                    print(datetimestamp, temperature, '°C')
-                    draw.text((0, 0), temperature, fill="white", font=FontTemp)
-                    draw.text((48, 92), '°C', fill="white", font=FontTemp2)
-        except:
-            print(datetimestamp, 'bmp280 has been removed or is missing')
-            with canvas(device) as draw:
-                error_message = 'bmp280 \nhas been \nremoved \nor is missing'
-                draw.text((0, 0), error_message, fill="white", font=FontDebug)
-            bmp280 = init_bmp280()
-
-if __name__ == "__main__":
-    try:
-        main()
+        main(bmp280, device)
     except KeyboardInterrupt:
         pass
